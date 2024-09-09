@@ -1,0 +1,47 @@
+[project]
+name = "regression-tester"
+version = "0.1.0"
+description = "Regression-test functions that output (polars) DataFrames"
+authors = [
+    { name = "Mikhael Gaster", email = "mikhaelgaster@gmail.com" }
+]
+dependencies = [
+    "polars>=1.6.0",
+    "pandas>=2.2.2",
+    "pydantic>=2.9.1",
+]
+readme = "README.md"
+requires-python = ">= 3.8"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "ruff>=0.6.4",
+    "black>=24.8.0",
+    "mypy>=1.11.2",
+    "isort>=5.13.2",
+    "pre-commit>=3.8.0",
+    "pytest>=8.3.2",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/regression_tester"]
+
+[tool.black]
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+
+[tool.mypy]
+ignore_missing_imports = true
+exclude = ".venv/*"
+follow_imports = "skip"
+
