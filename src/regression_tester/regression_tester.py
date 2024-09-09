@@ -59,7 +59,7 @@ class RegressionTestPackage(BaseModel):
 
     @property
     def locally_processed_df(self) -> pl.DataFrame:
-        self.extraction_fnc(self.RAW_INPUT_PATH).pipe(_sort_cols).drop(
+        return self.extraction_fnc(self.RAW_INPUT_PATH).pipe(_sort_cols).drop(
             self.cols_to_exclude
         )
 
