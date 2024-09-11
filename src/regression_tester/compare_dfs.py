@@ -54,8 +54,12 @@ def compare_dataframes(
     comparison_export_path: Path,
     raise_if_schema_difference: bool = True,
 ) -> None:
-    in_df1_not_in_df2 = set(df1.columns).difference(set(df2.columns))
-    in_df2_not_in_df1 = set(df2.columns).difference(set(df1.columns))
+    in_df1_not_in_df2: list[str] = sorted(
+        list(set(df1.columns).difference(set(df2.columns)))
+    )
+    in_df2_not_in_df1: list[str] = sorted(
+        list(set(df2.columns).difference(set(df1.columns)))
+    )
     if in_df1_not_in_df2 or in_df2_not_in_df1:
         raise ColumnsNotEqualError(
             f"In {name1} not in {name2}: {in_df1_not_in_df2}\

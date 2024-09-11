@@ -89,7 +89,7 @@ def test_regression_failure_cols_unequal(tmp_path: Path):
         MOCK_SNAPSHOT_DF,
         MOCK_SNAPSHOT_DF_COLS_UNEQUAL,
         expected_exception=ColumnsNotEqualError,
-        expected_exception_content="In Locally Processed not in Ground Truth: {'col3', 'col2'}                In Ground Truth not in Locally Processed: set()",
+        expected_exception_content="In Locally Processed not in Ground Truth: ['col2', 'col3']                In Ground Truth not in Locally Processed: []",
     )
 
 
