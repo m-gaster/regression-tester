@@ -1,5 +1,6 @@
+import warnings
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal
 
 import polars as pl
 from pydantic import BaseModel, Field
@@ -59,8 +60,10 @@ class RegressionTestPackage(BaseModel):
 
     @property
     def locally_processed_df(self) -> pl.DataFrame:
-        return self.extraction_fnc(self.RAW_INPUT_PATH).pipe(_sort_cols).drop(
-            self.cols_to_exclude
+        return (
+            self.extraction_fnc(self.RAW_INPUT_PATH)
+            .pipe(_sort_cols)
+            .drop(self.cols_to_exclude)
         )
 
     @property
@@ -81,3 +84,18 @@ class RegressionTestPackage(BaseModel):
             name2="Ground Truth",
             comparison_export_path=self.comparison_export_path,
         )
+
+    ################################################################
+
+    def overwrite_snapshot_w_local(self) -> None:
+        warnings.warn("OVERWRITING SNAPSHOT WITH LOCAL DATA. This cannot be undone!")
+        # confirm overwrite via command line
+        response: Literal["O"] | str | None = input('Type "O" to overwrite snapshot.\n')
+        match response:
+            case "O":
+                print(f"\nOverwriting snapshot at {self.PROCESSED_PATH}.")
+                self.locally_processed_df.write_parquet(self.PROCESSED_PATH)
+                print(f"\nSnapshot overwritten at {self.PROCESSED_PATH}.")
+
+            case _:
+                print("S\nnapshot not overwritten.")

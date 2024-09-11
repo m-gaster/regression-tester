@@ -4,27 +4,27 @@ repos:
     hooks:
       - id: ruff
         name: ruff
-        entry: ruff check .
+        entry: rye run ruff check .
         language: system
         pass_filenames: false
       - id: black
         name: black
-        entry: black --check .
+        entry: rye run black --check .
         language: system
         pass_filenames: false
       - id: mypy
         name: mypy
-        entry: mypy --explicit-package-bases .
+        entry: rye run mypy --explicit-package-bases .
         language: system
         pass_filenames: false
       - id: isort
         name: isort
-        entry: isort --check .
+        entry: rye run isort --check .
         language: system
         pass_filenames: false
       - id: pytest
         name: pytest
-        entry: pytest -s
+        entry: rye run pytest -s
         language: system
         pass_filenames: false
       # - id: interrogate
