@@ -9,6 +9,7 @@ dependencies = [
     "polars>=1.6.0",
     "pandas>=2.2.2",
     "pydantic>=2.9.1",
+    "pytest-mock>=3.14.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
@@ -26,6 +27,7 @@ dev-dependencies = [
     "isort>=5.13.2",
     "pre-commit>=3.8.0",
     "pytest>=8.3.2",
+    "pyarrow>=17.0.0",
 ]
 
 [tool.hatch.metadata]

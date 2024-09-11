@@ -1,101 +1,123 @@
+import re
 from pathlib import Path
+from unittest import mock
 
 import polars as pl
 import pytest
+
 from regression_tester import RegressionTestPackage
+from regression_tester.compare_dfs import (
+    ColumnsNotEqualError,
+    LengthsNotEqualError,
+    OverlappingContentsUneqalError,
+    SchemaDifferenceError,
+)
 
-# Mock extraction function
-def mock_extraction_fnc(path: Path) -> pl.DataFrame:
-    return pl.DataFrame(
-        {"col1": [1, 2, 3], "col2": ["a", "b", "c"], "col3": [1.1, 2.2, 3.3]}
+MEANINGLESS_PATH = Path("abcd")
+
+MOCK_SNAPSHOT_DF: pl.DataFrame = pl.DataFrame(
+    {
+        "col1": [1, 2, 3],
+        "col2": ["a", "b", "c"],
+        "col3": [1.1, 2.2, 3.3],
+    }
+)
+
+MOCK_SNAPSHOT_DF_COLS_UNEQUAL = MOCK_SNAPSHOT_DF.select(pl.col("col1"))
+
+MOCK_SNAPSHOT_DF_COL1_PLUS1 = MOCK_SNAPSHOT_DF.with_columns(pl.col("col1").add(1))
+MOCK_SNAPSHOT_DF_SCHEMA_CHANGE = MOCK_SNAPSHOT_DF.with_columns(
+    pl.col("col1").cast(pl.Float32)
+)
+
+MOCK_SNAPSHOT_DF_LENGTHS_UNEQUAL = pl.concat(
+    (
+        MOCK_SNAPSHOT_DF,
+        pl.DataFrame({"col1": [None], "col2": [None], "col3": [None]}),
     )
-mock_extraction_fnc(Path("")).write_parquet("test_data/processed.parquet")
+)
 
 
-@pytest.fixture
-def temp_test_dir():
-    # Create a temporary directory structure
+def generalized_regression_test(
+    tmp_path: Path,
+    df1: pl.DataFrame,
+    df2: pl.DataFrame,
+    expected_exception: type[Exception] | None = None,
+    expected_exception_content: str | None = None,
+):
+    # Create the paths for the mock processed and locally processed parquet files
+    processed_parquet_path = tmp_path / "processed.parquet"
+    locally_processed_parquet_path = tmp_path / "raw.txt"  # Simulating raw.txt presence
 
-    
-    return Path("test_data")
-    test_dir.mkdir()
-    (test_dir / "raw.txt").write_text("mock raw data")
+    # Write df2 (the ground truth dataframe) to the processed.parquet file
+    df2.write_parquet(processed_parquet_path)
 
-    # Create a mock processed.parquet file
-    mock_df = mock_extraction_fnc(test_dir / "raw.txt")
-    mock_df.write_parquet(test_dir / "processed.parquet")
+    # Write df1 to simulate raw.txt (locally processed dataframe)
+    df1.write_parquet(locally_processed_parquet_path)
 
-    return test_dir
+    # Mock the extraction function to return df1 (the locally processed dataframe)
+    mock_extraction_fnc = mock.Mock(
+        return_value=pl.read_parquet(locally_processed_parquet_path)
+    )
 
-
-def test_regression_test_package_initialization(temp_test_dir):
+    # Create an instance of the RegressionTestPackage with the temp path and mock extraction function
     package = RegressionTestPackage(
-        root_path=temp_test_dir, extraction_fnc=mock_extraction_fnc
+        root_path=tmp_path, extraction_fnc=mock_extraction_fnc, cols_to_exclude=[]
     )
 
-    assert package.root_path == temp_test_dir
-    assert package.extraction_fnc == mock_extraction_fnc
-    assert package.cols_to_exclude == []
+    # Execute the regression test
+    if expected_exception is not None:
+        with pytest.raises(
+            expected_exception,
+            match=re.escape(expected_exception_content),  # type: ignore
+        ):
+            package.execute_regression_test()
+    else:
+        package.execute_regression_test()
+
+    # Assert that the extraction function was called once to retrieve the locally processed data
+    mock_extraction_fnc.assert_called_once_with(locally_processed_parquet_path)
 
 
-def test_regression_test_package_properties(temp_test_dir):
-    package = RegressionTestPackage(
-        root_path=temp_test_dir, extraction_fnc=mock_extraction_fnc
-    )
-
-    assert package.RAW_INPUT_PATH == temp_test_dir / "raw.txt"
-    assert package.PROCESSED_PATH == temp_test_dir / "processed.parquet"
-    assert package.LOCALLY_PROCESSED_PATH == temp_test_dir / "locally_processed.parquet"
-    assert package.comparison_export_path == temp_test_dir / "reg_test_comparison.csv"
+def test_generalized_regression_success(tmp_path: Path):
+    generalized_regression_test(tmp_path, MOCK_SNAPSHOT_DF, MOCK_SNAPSHOT_DF)
 
 
-def test_regression_test_package_dataframes(temp_test_dir): # FAILING
-    package = RegressionTestPackage(
-        root_path=temp_test_dir, extraction_fnc=mock_extraction_fnc
-    )
-    print(f"{package=}")
-
-    locally_processed = package.locally_processed_df
-    ground_truth = package.ground_truth
-
-    assert isinstance(locally_processed, pl.DataFrame), locally_processed
-    assert isinstance(ground_truth, pl.DataFrame)
-    assert locally_processed.shape == ground_truth.shape
-    assert locally_processed.columns == ground_truth.columns
-
-
-def test_regression_test_package_execute(temp_test_dir, mocker): # FAILING
-    package = RegressionTestPackage(
-        root_path=temp_test_dir, extraction_fnc=mock_extraction_fnc
-    )
-
-    # Mock the compare_dataframes function
-    mock_compare = mocker.patch(
-        "src.pl_regression_tester._regression_tester.compare_dataframes"
-    )
-
-    package.execute_regression_test()
-
-    # Assert that compare_dataframes was called with the correct arguments
-    mock_compare.assert_called_once_with(
-        package.locally_processed_df,
-        package.ground_truth,
-        name1="Locally Processed",
-        name2="Ground Truth",
-        comparison_export_path=package.comparison_export_path,
+def test_regression_failure_cols_unequal(tmp_path: Path):
+    generalized_regression_test(
+        tmp_path,
+        MOCK_SNAPSHOT_DF,
+        MOCK_SNAPSHOT_DF_COLS_UNEQUAL,
+        expected_exception=ColumnsNotEqualError,
+        expected_exception_content="In Locally Processed not in Ground Truth: {'col3', 'col2'}                In Ground Truth not in Locally Processed: set()",
     )
 
 
-def test_regression_test_package_with_excluded_cols(temp_test_dir):  # FAILING
-    package = RegressionTestPackage(
-        root_path=temp_test_dir,
-        extraction_fnc=mock_extraction_fnc,
-        cols_to_exclude=["col2"],
+def test_regression_failure_col1_plus1(tmp_path: Path):
+    generalized_regression_test(
+        tmp_path,
+        MOCK_SNAPSHOT_DF,
+        MOCK_SNAPSHOT_DF_COL1_PLUS1,
+        expected_exception=OverlappingContentsUneqalError,
+        expected_exception_content="unequal_cols=['col1']",
     )
 
-    locally_processed = package.locally_processed_df
-    ground_truth = package.ground_truth
 
-    assert "col2" not in locally_processed.columns
-    assert "col2" not in ground_truth.columns
-    assert locally_processed.columns == ground_truth.columns == ["col1", "col3"]
+def test_regression_failure_schema_change(tmp_path: Path):
+    generalized_regression_test(
+        tmp_path,
+        MOCK_SNAPSHOT_DF,
+        MOCK_SNAPSHOT_DF_SCHEMA_CHANGE,
+        expected_exception=SchemaDifferenceError,
+        expected_exception_content="Schema difference between Locally Processed and Ground Truth: {'col1': (Int64, Float32)}",
+    )
+
+
+def test_regression_failure_lengths_unequal(tmp_path: Path):
+    generalized_regression_test(
+        tmp_path,
+        MOCK_SNAPSHOT_DF,
+        MOCK_SNAPSHOT_DF_LENGTHS_UNEQUAL,
+        expected_exception=LengthsNotEqualError,
+        expected_exception_content="Locally Processed shape = (3, 3)                Ground Truth shape = (4, 3)",
+    )
