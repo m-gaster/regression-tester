@@ -90,12 +90,14 @@ class RegressionTestPackage(BaseModel):
     def overwrite_snapshot_w_local(self) -> None:
         warnings.warn("OVERWRITING SNAPSHOT WITH LOCAL DATA. This cannot be undone!")
         # confirm overwrite via command line
-        response: Literal["O"] | str | None = input('Type "O" to overwrite snapshot.\n')
+        response: Literal["O"] | str | None = input(
+            'Type "O" to overwrite snapshot at {self.PROCESSED_PATH}.\n'
+        )
         match response:
             case "O":
-                print(f"\nOverwriting snapshot at {self.PROCESSED_PATH}.")
+                print("\nOverwriting snapshot...")
                 self.locally_processed_df.write_parquet(self.PROCESSED_PATH)
                 print(f"\nSnapshot overwritten at {self.PROCESSED_PATH}.")
 
             case _:
-                print("S\nnapshot not overwritten.")
+                print("\nSnapshot not overwritten.")
