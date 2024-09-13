@@ -30,18 +30,18 @@ class RegressionTestPackage(BaseModel):
     # name: str | None
     extraction_fnc: Callable[[Path], pl.DataFrame]
     cols_to_exclude: list[str] = Field(default_factory=list)
-    _RAW_INPUT_PATH: Path | None = None
-    _LOCALLY_PROCESSED_PATH: Path | None = None
-    _PROCESSED_PATH: Path | None = None
+    optional_raw_input_path: Path | None = None
+    optional_locally_processed_path: Path | None = None
+    optional_processed_path: Path | None = None
 
     ################################################################
 
     @property
     def RAW_INPUT_PATH(self) -> Path:
-        if self._RAW_INPUT_PATH:
-            if not self._RAW_INPUT_PATH.exists():
-                raise FileNotFoundError(self._RAW_INPUT_PATH)
-            return self._RAW_INPUT_PATH
+        if self.optional_raw_input_path:
+            if not self.optional_raw_input_path.exists():
+                raise FileNotFoundError(self.optional_raw_input_path)
+            return self.optional_raw_input_path
         for filename in ("raw.txt", "raw.txt.gz"):
             filepath = self.root_path / filename
             if filepath.exists():
@@ -50,8 +50,8 @@ class RegressionTestPackage(BaseModel):
 
     @property
     def PROCESSED_PATH(self) -> Path:
-        if self._PROCESSED_PATH:
-            return self._PROCESSED_PATH
+        if self.optional_processed_path:
+            return self.optional_processed_path
         path: Path = self.root_path / "processed.parquet"
         if not path.exists():
             raise FileNotFoundError(path)
@@ -59,8 +59,8 @@ class RegressionTestPackage(BaseModel):
 
     @property
     def LOCALLY_PROCESSED_PATH(self) -> Path:
-        if self._LOCALLY_PROCESSED_PATH:
-            return self._LOCALLY_PROCESSED_PATH
+        if self.optional_locally_processed_path:
+            return self.optional_locally_processed_path
         return self.root_path / "locally_processed.parquet"
 
     @property
