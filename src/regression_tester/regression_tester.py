@@ -58,12 +58,6 @@ class RegressionTestPackage(BaseModel):
         return path
 
     @property
-    def LOCALLY_PROCESSED_PATH(self) -> Path:
-        if self.optional_locally_processed_path:
-            return self.optional_locally_processed_path
-        return self.root_path / "locally_processed.parquet"
-
-    @property
     def comparison_export_path(self) -> Path:
         return Path(self.root_path / "reg_test_comparison.csv")
 
