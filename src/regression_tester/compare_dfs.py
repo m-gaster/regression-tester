@@ -71,8 +71,14 @@ def compare_dataframes(
                 {name2} shape = {df2.shape}"
         )
 
-    # COMPARE SCHEMA
-    compare_schemata(name1=name1, name2=name2, schema1=df1.schema, schema2=df2.schema)
+    # COMPARE SCHEMATA
+    compare_schemata(
+        name1=name1,
+        name2=name2,
+        schema1=df1.schema,
+        schema2=df2.schema,
+        raise_if_schema_difference=raise_if_schema_difference,
+    )
 
     comparison = df1.to_pandas().compare(
         df2.to_pandas(), result_names=(name1, name2)
