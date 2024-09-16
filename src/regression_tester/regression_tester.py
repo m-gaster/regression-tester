@@ -96,7 +96,7 @@ class RegressionTestPackage(BaseModel):
         warnings.warn("OVERWRITING SNAPSHOT WITH LOCAL DATA. This cannot be undone!")
         # confirm overwrite via command line
         response: Literal["O"] | str | None = input(
-            'Type "O" to overwrite snapshot at {self.PROCESSED_PATH}.\n'
+            f'Type "O" to overwrite snapshot at {self.PROCESSED_PATH}.\n'
         )
         match response:
             case "O":
