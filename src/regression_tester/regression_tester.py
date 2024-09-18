@@ -33,7 +33,7 @@ class RegressionTestPackage(BaseModel):
     optional_raw_input_path: Path | None = None
     optional_locally_processed_path: Path | None = None
     optional_processed_path: Path | None = None
-
+    raise_if_schema_difference: bool = True
     ################################################################
 
     @property
@@ -63,21 +63,30 @@ class RegressionTestPackage(BaseModel):
 
     ################################################################
 
+    def _exclude_cols(self, df: pl.DataFrame) -> pl.DataFrame:
+        df = df.pipe(_sort_cols)
+        present_cols_to_drop = [
+            col for col in self.cols_to_exclude if col in df.columns
+        ]
+
+        cols_to_exclude_that_are_not_present = set(self.cols_to_exclude) - set(
+            present_cols_to_drop
+        )
+        if cols_to_exclude_that_are_not_present:
+            warning_str = f"{cols_to_exclude_that_are_not_present=}"
+            warnings.warn(warning_str)
+
+        return df.drop(present_cols_to_drop)
+
     @property
     def locally_processed_df(self) -> pl.DataFrame:
-        return (
-            self.extraction_fnc(self.RAW_INPUT_PATH)
-            .pipe(_sort_cols)
-            .drop(self.cols_to_exclude)
-        )
+        df = self.extraction_fnc(self.RAW_INPUT_PATH)
+        return self._exclude_cols(df)
 
     @property
     def ground_truth(self) -> pl.DataFrame:
-        return (
-            pl.read_parquet(self.PROCESSED_PATH)
-            .pipe(_sort_cols)
-            .drop(self.cols_to_exclude)
-        )
+        df = pl.read_parquet(self.PROCESSED_PATH)
+        return self._exclude_cols(df)
 
     ################################################################
 
@@ -88,12 +97,18 @@ class RegressionTestPackage(BaseModel):
             name1="Locally Processed",
             name2="Ground Truth",
             comparison_export_path=self.comparison_export_path,
+            raise_if_schema_difference=self.raise_if_schema_difference,
         )
 
     ################################################################
 
     def overwrite_snapshot_w_local(self) -> None:
         warnings.warn("OVERWRITING SNAPSHOT WITH LOCAL DATA. This cannot be undone!")
+        if self.cols_to_exclude:
+            excluded_cols_warning: str = (
+                f"NOT INCLUDING {self.cols_to_exclude=} IN SNAPSHOT OVERWRITE."
+            )
+            warnings.warn(excluded_cols_warning)
         # confirm overwrite via command line
         response: Literal["O"] | str | None = input(
             f'Type "O" to overwrite snapshot at {self.PROCESSED_PATH}.\n'
